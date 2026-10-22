@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "status": "provisional",
+    "description": "Typical and high absolute within-person differences per feature. PROVISIONAL defaults set by judgement, not calibrated on real candidate data. Run calibrate.py on genuine text pairs to replace them.",
+    "n_pairs": 0,
+    "source": "default"
+  },
+  "sentence_len_mean": {"typical": 4.0, "high": 7.0},
+  "sentence_len_sd": {"typical": 3.5, "high": 6.0},
+  "avg_word_len": {"typical": 0.25, "high": 0.45},
+  "mtld": {"typical": 25.0, "high": 45.0},
+  "long_word_pct": {"typical": 5.0, "high": 9.0},
+  "function_word_distance": {"typical": 0.12, "high": 0.2},
+  "commas_p100": {"typical": 2.0, "high": 3.5},
+  "semicolons_colons_p100": {"typical": 0.5, "high": 1.0},
+  "dashes_p100": {"typical": 0.6, "high": 1.2},
+  "excl_quest_p100": {"typical": 0.6, "high": 1.2},
+  "parentheses_p100": {"typical": 0.5, "high": 1.0},
+  "flesch_reading_ease": {"typical": 12.0, "high": 22.0},
+  "fk_grade": {"typical": 2.5, "high": 4.5},
+  "discourse_markers_p100": {"typical": 0.8, "high": 1.6},
+  "british_share": {"typical": 0.35, "high": 0.6},
+  "contractions_p100": {"typical": 1.5, "high": 3.0},
+  "first_person_p100": {"typical": 2.5, "high": 5.0}
+}
