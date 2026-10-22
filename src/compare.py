@@ -19,21 +19,27 @@ from .features import extract_features, function_word_distance
 
 REFERENCE_PATH = Path(__file__).with_name("reference_ranges.json")
 
+# Length limits: below MIN_WORDS_REFUSE no comparison is made; below
+# MIN_WORDS_WARN the comparison runs but is labelled unreliable.
 MIN_WORDS_REFUSE = 80
 MIN_WORDS_WARN = 150
 MIN_SPELLING_VARIANTS = 2  # per text, before spelling convention is compared
 
+# Band names double as the labels shown in the UI and the report.
 GREEN = "Within typical range"
 AMBER = "Somewhat unusual"
 RED = "Notably different"
 GREY = "Not enough evidence"
 
-BAND_COLOURS = {GREEN: "#d9f2d9", AMBER: "#fff1c2", RED: "#f9d0cc", GREY: "#e8e8e8"}
+# Soft fills for the table, paragraph cards and DOCX shading (green, yellow, pink, grey).
+BAND_COLOURS = {GREEN: "#dcefd6", AMBER: "#fbefb0", RED: "#ffcfe0", GREY: "#ebe7e0"}
 BAND_ICONS = {GREEN: "🟢", AMBER: "🟠", RED: "🔴", GREY: "⚪"}
 
 
 @dataclass(frozen=True)
 class FeatureSpec:
+    """How one feature is labelled, formatted and explained to the practitioner."""
+
     key: str
     label: str
     unit: str
@@ -42,6 +48,7 @@ class FeatureSpec:
     pairwise: bool = False  # measured between the texts, not per text
 
 
+# Every compared feature, in the order it appears in the table and the report.
 FEATURE_SPECS: list[FeatureSpec] = [
     FeatureSpec("sentence_len_mean", "Average sentence length", "words", 1,
                 "How long sentences are on average. Remote, edited writing often has longer sentences."),
@@ -61,14 +68,14 @@ FEATURE_SPECS: list[FeatureSpec] = [
     FeatureSpec("semicolons_colons_p100", "Semicolons and colons", "per 100 words", 2,
                 "Many writers rarely use these; a sudden increase or drop is worth noting."),
     FeatureSpec("dashes_p100", "Dashes", "per 100 words", 2,
-                "Use of dashes (-, –, —) as punctuation, which tends to be a personal habit."),
+                "Use of dashes as punctuation (not hyphens inside words), which tends to be a personal habit."),
     FeatureSpec("excl_quest_p100", "Exclamation and question marks", "per 100 words", 2,
                 "Rhetorical questions and exclamations reflect tone and personal style."),
     FeatureSpec("parentheses_p100", "Parentheses", "per 100 words", 2,
                 "Use of brackets for asides or clarifications."),
-    FeatureSpec("flesch_reading_ease", "Reading ease (Flesch)", "0–100", 1,
+    FeatureSpec("flesch_reading_ease", "Reading ease (Flesch)", "0-100", 1,
                 "Higher = easier to read. Influenced by sentence length and word length together."),
-    FeatureSpec("fk_grade", "Reading grade (Flesch–Kincaid)", "grade level", 1,
+    FeatureSpec("fk_grade", "Reading grade (Flesch-Kincaid)", "grade level", 1,
                 "Approximate school grade needed to read the text easily."),
     FeatureSpec("discourse_markers_p100", "Stock connectives and phrases", "per 100 words", 2,
                 "Rate of formal connectives and stock phrases (e.g. 'furthermore', 'moreover', 'it is important to note', 'crucial'). These are also common in templates, coaching material and edited text."),
@@ -83,11 +90,13 @@ SPEC_BY_KEY = {s.key: s for s in FEATURE_SPECS}
 
 
 def load_reference_ranges(path: Path | str = REFERENCE_PATH) -> dict:
+    """Load the typical and high within-person differences for each feature."""
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def is_provisional(ranges: dict) -> bool:
+    """True until calibrate.py has marked the ranges as calibrated on real data."""
     return ranges.get("_meta", {}).get("status", "provisional") != "calibrated"
 
 
@@ -111,9 +120,11 @@ def feature_differences(base: dict, remote: dict) -> dict[str, float | None]:
     """Absolute difference per compared feature (None when not measurable)."""
     diffs: dict[str, float | None] = {}
     for spec in FEATURE_SPECS:
+        # The function-word profile is a single distance between the two texts.
         if spec.key == "function_word_distance":
             diffs[spec.key] = function_word_distance(
                 base["function_word_profile"], remote["function_word_profile"])
+        # Spelling share is only compared when both texts have enough spelling variants.
         elif spec.key == "british_share":
             enough = all(f["british_count"] + f["american_count"] >= MIN_SPELLING_VARIANTS
                          for f in (base, remote))
@@ -124,6 +135,7 @@ def feature_differences(base: dict, remote: dict) -> dict[str, float | None]:
 
 
 def band_for(diff: float | None, typical: float, high: float) -> str:
+    """Place a difference in a band. A missing difference means not enough evidence."""
     if diff is None:
         return GREY
     if diff <= typical:
@@ -154,6 +166,7 @@ def compare_texts(baseline_text: str, remote_text: str, ranges: dict | None = No
     for spec in FEATURE_SPECS:
         ref = ranges[spec.key]
         diff = diffs[spec.key]
+        # Pairwise features have no per-text value, only a difference.
         if spec.pairwise:
             b_val, r_val = None, None
         else:
@@ -172,6 +185,7 @@ def compare_texts(baseline_text: str, remote_text: str, ranges: dict | None = No
             "band": band_for(diff, ref["typical"], ref["high"]),
         })
 
+    # Summarise as counts only. Grey (unmeasurable) features are left out of the total.
     assessed = [r for r in result["rows"] if r["band"] != GREY]
     outside = [r for r in assessed if r["band"] in (AMBER, RED)]
     result["n_assessed"] = len(assessed)
@@ -186,6 +200,7 @@ def compare_texts(baseline_text: str, remote_text: str, ranges: dict | None = No
 
 
 def format_value(value: float | None, decimals: int) -> str:
+    """Format a number for display, using a hyphen when there is no value."""
     if value is None:
-        return "–"
+        return "-"
     return f"{value:.{decimals}f}"

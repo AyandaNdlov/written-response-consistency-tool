@@ -172,9 +172,9 @@ Three conditions, each with a supervised baseline from the same person:
 
 | Condition | Remote text | Expected |
 |---|---|---|
-| Genuine–genuine | Candidate's own remote response | Mostly green |
-| Genuine–AI | Fully generated response | Many amber/red |
-| Genuine–AI-edited | Generated text partly rewritten by the candidate | In between; edited paragraphs green, generated ones flagged |
+| Genuine-genuine | Candidate's own remote response | Mostly green |
+| Genuine-AI | Fully generated response | Many amber/red |
+| Genuine-AI-edited | Generated text partly rewritten by the candidate | In between; edited paragraphs green, generated ones flagged |
 
 **Key metric: the false-flag rate on genuine pairs** (the share of features, and of candidates,
 with amber/red bands when nothing is wrong). This is the fairness-critical error. Also report the
@@ -186,9 +186,9 @@ Run the bundled version with `python evaluate.py -v`. With the provisional range
 
 | Condition | Features outside typical | Red |
 |---|---|---|
-| Genuine–genuine (sample) | 1 / 17 | 0 |
-| Genuine–AI (sample) | 12 / 17 | 9 |
-| Genuine–AI-edited (sample) | 8 / 17 (paragraphs 2 and 3 flagged, i.e. the unedited ones) | 6 |
+| Genuine-genuine (sample) | 1 / 17 | 0 |
+| Genuine-AI (sample) | 12 / 17 | 9 |
+| Genuine-AI-edited (sample) | 8 / 17 (paragraphs 2 and 3 flagged, i.e. the unedited ones) | 6 |
 | 3 synthetic genuine pairs, different prompts | 11 / 49 (22%) | 2 |
 
 The 22% false-flag rate on different-prompt genuine pairs is exactly why bands must be read as

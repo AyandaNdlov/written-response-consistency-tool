@@ -12,6 +12,7 @@ from docx.shared import Pt, RGBColor
 
 from .compare import BAND_COLOURS, GREY, format_value
 
+# Shown at the top and bottom of every report, and in the app.
 DISCLAIMER = (
     "This report does not indicate whether AI was used. Differences in writing can have many "
     "legitimate causes, including time pressure, topic, language background, editing tools such "
@@ -26,6 +27,7 @@ PROVISIONAL_NOTE = (
 
 
 def _shade(cell, hex_colour: str) -> None:
+    """Fill a Word table cell with a background colour (python-docx has no direct API)."""
     shading = OxmlElement("w:shd")
     shading.set(qn("w:val"), "clear")
     shading.set(qn("w:color"), "auto")
@@ -34,6 +36,7 @@ def _shade(cell, hex_colour: str) -> None:
 
 
 def _disclaimer(doc: Document) -> None:
+    """Add the disclaimer as a bold, dark red paragraph."""
     para = doc.add_paragraph()
     run = para.add_run(DISCLAIMER)
     run.bold = True
@@ -42,10 +45,12 @@ def _disclaimer(doc: Document) -> None:
 
 def build_report(result: dict, paragraphs: list[dict], questions: list[str],
                  question_mode: str, notes: str, candidate_ref: str = "") -> bytes:
+    """Build the full consistency report as a .docx file and return its bytes."""
     doc = Document()
     doc.styles["Normal"].font.name = "Calibri"
     doc.styles["Normal"].font.size = Pt(10.5)
 
+    # --- title, date and disclaimer
     doc.add_heading("Written Response Consistency Report", level=0)
     meta = doc.add_paragraph()
     meta.add_run("Generated: ").bold = True
@@ -57,6 +62,7 @@ def build_report(result: dict, paragraphs: list[dict], questions: list[str],
     if result.get("provisional"):
         doc.add_paragraph(PROVISIONAL_NOTE).runs[0].italic = True
 
+    # --- summary and length checks
     doc.add_heading("Summary", level=1)
     base, remote = result["baseline_features"], result["remote_features"]
     doc.add_paragraph(
@@ -70,6 +76,7 @@ def build_report(result: dict, paragraphs: list[dict], questions: list[str],
     else:
         doc.add_paragraph(result["summary"]).runs[0].bold = True
 
+        # --- feature table, with the band cell shaded in its band colour
         doc.add_heading("Feature comparison", level=1)
         doc.add_paragraph(
             "Each difference is compared with the typical difference between two texts written "
@@ -98,6 +105,7 @@ def build_report(result: dict, paragraphs: list[dict], questions: list[str],
             p.add_run(row["label"] + ": ").bold = True
             p.add_run(row["explanation"])
 
+        # --- each remote paragraph in a shaded single-cell table
         doc.add_heading("Paragraph highlights (remote text)", level=1)
         doc.add_paragraph(
             "Paragraphs of 40+ words are ranked by how different they are from the baseline "
@@ -118,6 +126,7 @@ def build_report(result: dict, paragraphs: list[dict], questions: list[str],
             table.rows[0].cells[0].text = p["text"]
             _shade(table.rows[0].cells[0], BAND_COLOURS[p["band"] if p["eligible"] else GREY])
 
+    # --- questions, notes and a closing disclaimer
     doc.add_heading("Suggested follow-up questions", level=1)
     doc.add_paragraph(f"Source: {question_mode}.").runs[0].italic = True
     for q in questions:
@@ -129,6 +138,7 @@ def build_report(result: dict, paragraphs: list[dict], questions: list[str],
     doc.add_heading("Important", level=1)
     _disclaimer(doc)
 
+    # Save to memory only, so no copy of the report is left on the server.
     buffer = BytesIO()
     doc.save(buffer)
     return buffer.getvalue()

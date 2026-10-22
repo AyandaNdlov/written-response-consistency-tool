@@ -30,11 +30,12 @@ from src.compare import FEATURE_SPECS, REFERENCE_PATH, feature_differences, load
 from src.features import extract_features
 
 PAIRS_DIR = Path(__file__).parent / "data" / "genuine_pairs"
-PRIOR_STRENGTH = 10
+PRIOR_STRENGTH = 10  # how many pairs the defaults are "worth" when blending
 MIN_RATIO = 1.25  # keep "high" meaningfully above "typical"
 
 
 def percentile(values: list[float], q: float) -> float:
+    """Percentile with linear interpolation (q between 0 and 1)."""
     vals = sorted(values)
     if len(vals) == 1:
         return vals[0]
@@ -44,6 +45,7 @@ def percentile(values: list[float], q: float) -> float:
 
 
 def load_pairs(pairs_dir: Path) -> list[tuple[str, str, str]]:
+    """Return (person, text_a, text_b) for every personX_a.txt that has a matching _b file."""
     pairs = []
     for a_path in sorted(pairs_dir.glob("*_a.txt")):
         person = re.sub(r"_a$", "", a_path.stem)
@@ -56,6 +58,8 @@ def load_pairs(pairs_dir: Path) -> list[tuple[str, str, str]]:
 
 
 def calibrate(pairs, prior: dict, min_pairs: int) -> dict:
+    """Work out new typical and high ranges from the pairs, blended with the prior."""
+    # Collect every within-person difference, feature by feature.
     diffs_by_feature: dict[str, list[float]] = {s.key: [] for s in FEATURE_SPECS}
     for _, text_a, text_b in pairs:
         diffs = feature_differences(extract_features(text_a), extract_features(text_b))
@@ -63,6 +67,7 @@ def calibrate(pairs, prior: dict, min_pairs: int) -> dict:
             if value is not None:
                 diffs_by_feature[key].append(value)
 
+    # The prior is stored in the output so later runs blend towards the original defaults.
     out = {"_meta": {
         "status": "calibrated" if len(pairs) >= min_pairs else "provisional",
         "description": (f"Calibrated by calibrate.py on {len(pairs)} genuine pairs "
@@ -78,6 +83,7 @@ def calibrate(pairs, prior: dict, min_pairs: int) -> dict:
         if not values:
             out[spec.key] = dict(p)
             continue
+        # More pairs means more weight on the data and less on the defaults.
         w = len(values) / (len(values) + PRIOR_STRENGTH)
         typical = w * percentile(values, 0.75) + (1 - w) * p["typical"]
         high = w * percentile(values, 0.95) + (1 - w) * p["high"]
@@ -87,6 +93,7 @@ def calibrate(pairs, prior: dict, min_pairs: int) -> dict:
 
 
 def main() -> int:
+    """Command-line entry point: print old and new ranges, and save them with --write."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pairs-dir", type=Path, default=PAIRS_DIR)
     parser.add_argument("--output", type=Path, default=REFERENCE_PATH)
