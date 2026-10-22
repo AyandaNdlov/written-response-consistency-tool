@@ -169,7 +169,6 @@ div[data-testid="stTextArea"] textarea { font-size: 0.98rem; line-height: 1.55; 
 .paper li.lock::before { content: "🔒"; font-size: 0.85rem; }
 .paper .sign { font-family: var(--hand); font-size: 1.05rem; text-align: right; opacity: 0.75; margin-top: 0.2rem; }
 
-.footer { text-align: center; margin: 3.5rem 0 1rem; font-size: 0.9rem; opacity: 0.7; }
 </style>
 """
 
@@ -305,14 +304,15 @@ with st.sidebar:
         "<li class='lock'><span>Remove names and ID numbers before pasting.</span></li>"
         "</ul></div>",
         unsafe_allow_html=True)
-    st.subheader("Question generation")
-    use_llm = st.toggle("Use Claude to tailor questions", value=False, disabled=not api_key,
-                        help=f"Uses {LLM_MODEL}. Requires ANTHROPIC_API_KEY.")
-    if not api_key:
-        st.caption("No ANTHROPIC_API_KEY found, so template questions are used.")
-    elif use_llm:
-        st.caption("When on, the flagged paragraphs are sent to Anthropic's API to write questions. "
-                   "Make sure your organisation's data-processing agreement allows this.")
+    # The Claude option only appears when an API key is set; otherwise template questions are used.
+    use_llm = False
+    if api_key:
+        st.subheader("Question generation")
+        use_llm = st.toggle("Use Claude to tailor questions", value=False,
+                            help=f"Uses {LLM_MODEL}.")
+        if use_llm:
+            st.caption("When on, the flagged paragraphs are sent to Anthropic's API to write questions. "
+                       "Make sure your organisation's data-processing agreement allows this.")
     if ranges.get("_meta", {}).get("status") != "calibrated":
         st.caption("⚠️ Reference ranges are **provisional** until calibrated (see README).")
 
@@ -477,6 +477,3 @@ if analysis:
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             type="primary",
         )
-
-st.markdown("<div class='footer'><span class='hand'>made with care</span> · "
-            "text is processed in memory only</div>", unsafe_allow_html=True)
