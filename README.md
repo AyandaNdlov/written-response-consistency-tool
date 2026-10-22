@@ -89,7 +89,7 @@ difference from the baseline is divided by 1.5 × the typical difference (paragr
 than whole texts) and capped at 3. The mean of these gives a relative score: below 1.0 is
 green, 1.0 to 1.5 amber, and above 1.5 red. Paragraphs are ranked and shaded in the UI.
 
-### ⚠️ Reference ranges are provisional
+### Reference ranges are provisional
 
 The values shipped in `reference_ranges.json` are **judgement-based provisional defaults** and
 have **not** been calibrated on real candidate data. The UI and the report both say so. Replace
@@ -134,74 +134,4 @@ streamlit run app.py
 Then use **Load example** to try the bundled sample pairs, or upload the extra samples in
 `data/samples/person2_*.txt`.
 
-## Calibrate the reference ranges
 
-1. Collect genuine pairs: two texts by the same person, ideally one supervised and one remote,
-   collected with consent and anonymised. Save them as `data/genuine_pairs/personX_a.txt` and
-   `personX_b.txt`.
-2. Run a dry run to see the proposed ranges, then save them:
-
-```bash
-python calibrate.py          # shows old vs new ranges, saves nothing
-python calibrate.py --write  # saves src/reference_ranges.json
-```
-
-For each feature, `typical` = 75th percentile and `high` = 95th percentile of the
-within-person differences. With few pairs these are shrunk towards the defaults (weight
-n / (n + 10)), and the ranges are marked `calibrated` only after 30+ pairs.
-
-The 3 bundled pairs in `data/genuine_pairs/` are **synthetic texts written to demonstrate the
-mechanics**, not real candidate data. They use different prompts within each pair, which makes
-them a harsh test.
-
-## Evaluation plan
-
-Three conditions, each with a supervised baseline from the same person:
-
-| Condition | Remote text | Expected |
-|---|---|---|
-| Genuine-genuine | Candidate's own remote response | Mostly green |
-| Genuine-AI | Fully generated response | Many amber/red |
-| Genuine-AI-edited | Generated text partly rewritten by the candidate | In between; edited paragraphs green, generated ones flagged |
-
-**Key metric: the false-flag rate on genuine pairs** (the share of features, and of candidates,
-with amber/red bands when nothing is wrong). This is the fairness-critical error. Also report the
-false-flag rate separately for first- and second-language English writers, and the
-paragraph-level hit rate in the AI-edited condition. Because no single score exists, report band
-counts per condition rather than a detection accuracy.
-
-Run the bundled version with `python evaluate.py -v`. With the provisional ranges:
-
-| Condition | Features outside typical | Red |
-|---|---|---|
-| Genuine-genuine (sample) | 1 / 17 | 0 |
-| Genuine-AI (sample) | 12 / 17 | 9 |
-| Genuine-AI-edited (sample) | 8 / 17 (paragraphs 2 and 3 flagged, i.e. the unedited ones) | 6 |
-| 3 synthetic genuine pairs, different prompts | 11 / 49 (22%) | 2 |
-
-The 22% false-flag rate on different-prompt genuine pairs is exactly why bands must be read as
-prompts for conversation and why calibration on real data is needed.
-
-## Deploy on Streamlit Community Cloud
-
-1. Push this repository to GitHub (public or private).
-2. Go to [share.streamlit.io](https://share.streamlit.io), click **Create app**, choose the repo,
-   branch `main` and main file `app.py`. Under *Advanced settings* choose Python 3.12 or newer.
-3. Deploy. `requirements.txt` is installed automatically.
-
-## Project structure
-
-```
-app.py                  Streamlit UI
-calibrate.py            Recompute reference ranges from genuine pairs
-evaluate.py             Run the three evaluation conditions on the samples
-src/features.py         Feature extraction (regex/plain Python; textstat for readability)
-src/compare.py          Differences, banding, length checks
-src/paragraphs.py       Paragraph-level analysis
-src/questions.py        Template follow-up questions
-src/report.py           DOCX report export (in memory)
-src/reference_ranges.json  Typical/high within-person differences (provisional)
-data/samples/           Example texts for the three conditions
-data/genuine_pairs/     Synthetic genuine pairs for demonstrating calibration
-tests/                  pytest tests
-```
