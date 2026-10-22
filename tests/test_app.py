@@ -13,8 +13,7 @@ EXAMPLES = [
 
 
 @pytest.mark.parametrize("example", EXAMPLES)
-def test_app_runs_each_example(example, monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+def test_app_runs_each_example(example):
     at = streamlit_testing.AppTest.from_file(APP, default_timeout=60)
     at.run()
     at.selectbox(key="example").select(example).run()
@@ -25,8 +24,7 @@ def test_app_runs_each_example(example, monkeypatch):
     assert any("features fall outside the typical range" in m.value for m in at.markdown)
 
 
-def test_app_refuses_short_text(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+def test_app_refuses_short_text():
     at = streamlit_testing.AppTest.from_file(APP, default_timeout=60)
     at.run()
     at.text_area(key="baseline_text").input("Far too short to compare. " * 5)

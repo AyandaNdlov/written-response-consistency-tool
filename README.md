@@ -44,7 +44,7 @@ used to plan a **fair follow-up conversation** rather than to make an accusation
                                                                                   + radar chart
  Remote text ─► Split into paragraphs ─► Distance of each paragraph from baseline ─► Ranked highlights
                                                                                          │
-                         Flagged paragraphs ─► Follow-up questions (template or Claude) ─┘
+                         Flagged paragraphs ─► Follow-up questions (templates) ─────────┘
                                                                                          ▼
                                                             Practitioner notes ─► DOCX report download
 ```
@@ -118,9 +118,8 @@ them by running `calibrate.py` on genuine pairs (see below).
 - **POPIA:** text is processed **in memory only**. The app writes nothing to disk and keeps no
   logs, and Streamlit usage statistics are disabled. Remove names and ID numbers before pasting.
   The downloaded report is the practitioner's responsibility to store securely.
-- **Optional LLM mode** sends the flagged paragraphs to Anthropic's API. Enable it only if your
-  organisation's data-processing agreements allow this cross-border transfer (POPIA s72).
-- The question generator is instructed never to accuse, suggest AI use or judge authorship.
+- Follow-up questions come from fixed templates that never accuse, suggest AI use or judge
+  authorship. No text is sent to any outside service.
 
 ## Run locally
 
@@ -132,17 +131,8 @@ pytest
 streamlit run app.py
 ```
 
-Then use **Load example** to try the bundled sample pairs.
-
-Optional LLM questions: set `ANTHROPIC_API_KEY` in your environment, or put it in
-`.streamlit/secrets.toml` (git-ignored):
-
-```toml
-ANTHROPIC_API_KEY = "sk-ant-..."
-```
-
-The app uses `claude-sonnet-5-5` with server-side fallback enabled, and falls back to
-template questions if the call fails.
+Then use **Load example** to try the bundled sample pairs, or upload the extra samples in
+`data/samples/person2_*.txt`.
 
 ## Calibrate the reference ranges
 
@@ -197,8 +187,7 @@ prompts for conversation and why calibration on real data is needed.
 1. Push this repository to GitHub (public or private).
 2. Go to [share.streamlit.io](https://share.streamlit.io), click **Create app**, choose the repo,
    branch `main` and main file `app.py`. Under *Advanced settings* choose Python 3.12 or newer.
-3. Optional: under *Advanced settings → Secrets*, add `ANTHROPIC_API_KEY = "sk-ant-..."`.
-4. Deploy. `requirements.txt` is installed automatically.
+3. Deploy. `requirements.txt` is installed automatically.
 
 ## Project structure
 
@@ -209,7 +198,7 @@ evaluate.py             Run the three evaluation conditions on the samples
 src/features.py         Feature extraction (regex/plain Python; textstat for readability)
 src/compare.py          Differences, banding, length checks
 src/paragraphs.py       Paragraph-level analysis
-src/questions.py        Template and optional Claude follow-up questions
+src/questions.py        Template follow-up questions
 src/report.py           DOCX report export (in memory)
 src/reference_ranges.json  Typical/high within-person differences (provisional)
 data/samples/           Example texts for the three conditions
