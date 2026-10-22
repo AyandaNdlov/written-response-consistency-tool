@@ -12,12 +12,14 @@ from __future__ import annotations
 from .compare import AMBER, GREEN, GREY, RED, SPEC_BY_KEY
 from .features import extract_features, function_word_distance, split_paragraphs
 
-MIN_PARAGRAPH_WORDS = 40
+MIN_PARAGRAPH_WORDS = 40  # shorter paragraphs are shown but not scored
 PARAGRAPH_TOLERANCE = 1.5  # paragraphs vary more than whole texts
 SCORE_CAP = 3.0            # stop one extreme feature dominating the score
+# Score cut-offs: below 1.0 is green, 1.0 to 1.5 amber, 1.5 and above red.
 AMBER_SCORE = 1.0
 RED_SCORE = 1.5
 
+# A smaller set of features that still behave sensibly on a single paragraph.
 PARAGRAPH_FEATURES = [
     "sentence_len_mean", "avg_word_len", "long_word_pct", "commas_p100",
     "discourse_markers_p100", "contractions_p100", "first_person_p100",
@@ -26,6 +28,7 @@ PARAGRAPH_FEATURES = [
 
 
 def _score_band(score: float) -> str:
+    """Turn a paragraph score into a green, amber or red band."""
     if score < AMBER_SCORE:
         return GREEN
     if score < RED_SCORE:
@@ -42,6 +45,8 @@ def analyse_paragraphs(remote_text: str, baseline_features: dict, ranges: dict) 
                  "eligible": feats["word_count"] >= MIN_PARAGRAPH_WORDS,
                  "score": None, "band": GREY, "drivers": []}
         if entry["eligible"]:
+            # Each feature contributes its difference divided by a tolerant "typical"
+            # difference, so 1.0 means "about as different as is usual for one person".
             contributions = {}
             for key in PARAGRAPH_FEATURES:
                 if key == "function_word_distance":
@@ -51,12 +56,15 @@ def analyse_paragraphs(remote_text: str, baseline_features: dict, ranges: dict) 
                     diff = abs(feats[key] - baseline_features[key])
                 scale = ranges[key]["typical"] * PARAGRAPH_TOLERANCE
                 contributions[key] = min(diff / scale, SCORE_CAP) if scale else 0.0
+            # The paragraph score is the average contribution. The two biggest
+            # contributors (if clearly above typical) are reported as "drivers".
             score = sum(contributions.values()) / len(contributions)
             top = sorted(contributions.items(), key=lambda kv: kv[1], reverse=True)[:2]
             entry.update(score=score, band=_score_band(score),
                          drivers=[SPEC_BY_KEY[k].label for k, v in top if v >= 1.0])
         results.append(entry)
 
+    # Rank scored paragraphs from most to least different (1 = most different).
     ranked = sorted((r for r in results if r["eligible"]), key=lambda r: r["score"], reverse=True)
     for rank, r in enumerate(ranked, start=1):
         r["rank"] = rank

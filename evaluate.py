@@ -16,6 +16,7 @@ from src.paragraphs import analyse_paragraphs
 
 ROOT = Path(__file__).parent
 SAMPLES = ROOT / "data" / "samples"
+# Each condition pairs the same supervised baseline with a different remote text.
 CONDITIONS = {
     "genuine-genuine": "remote_genuine_person1.txt",
     "genuine-AI": "remote_ai_person1.txt",
@@ -24,6 +25,7 @@ CONDITIONS = {
 
 
 def describe(name: str, baseline: str, remote: str, verbose: bool) -> dict:
+    """Compare one pair, print the summary and flagged features, and return the result."""
     result = compare_texts(baseline, remote)
     print(f"\n== {name} ==")
     if result["length_status"] == "refuse":
@@ -43,11 +45,13 @@ def describe(name: str, baseline: str, remote: str, verbose: bool) -> dict:
 
 
 def main() -> None:
+    """Run the three sample conditions, then the false-flag check on genuine pairs."""
     verbose = "-v" in sys.argv
     baseline = (SAMPLES / "baseline_person1.txt").read_text(encoding="utf-8")
     for name, fname in CONDITIONS.items():
         describe(name, baseline, (SAMPLES / fname).read_text(encoding="utf-8"), verbose)
 
+    # Genuine pairs are by the same person, so anything outside typical is a false flag.
     print("\n== Genuine pairs (false-flag check) ==")
     red_total = outside_total = assessed_total = 0
     for a_path in sorted((ROOT / "data" / "genuine_pairs").glob("*_a.txt")):

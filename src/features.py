@@ -157,11 +157,17 @@ def split_paragraphs(text: str) -> list[str]:
 
 
 def split_sentences(text: str) -> list[str]:
+    """Split text into sentences, paragraph by paragraph.
+
+    Abbreviations such as "e.g." are protected first so their full stops are
+    not mistaken for sentence ends.
+    """
     sentences: list[str] = []
     for para in split_paragraphs(text):
         protected = para
         for abbr in ABBREVIATIONS:
             protected = protected.replace(abbr, abbr.replace(".", "<DOT>"))
+        # Split after . ! or ?, allowing closing quotes or brackets before the space.
         for part in re.split(r"(?<=[.!?])[\"')\]]*\s+", protected):
             part = part.replace("<DOT>", ".").strip()
             if WORD_RE.search(part):
@@ -170,6 +176,7 @@ def split_sentences(text: str) -> list[str]:
 
 
 def tokenize(text: str) -> list[str]:
+    """Return the words in a text, keeping apostrophes inside words (don't, it's)."""
     return WORD_RE.findall(normalise(text))
 
 
@@ -178,6 +185,12 @@ def tokenize(text: str) -> list[str]:
 # --------------------------------------------------------------------------
 
 def _mtld_pass(tokens: list[str], threshold: float = 0.72) -> float:
+    """One directional MTLD pass.
+
+    Walk through the words, tracking the type-token ratio. Each time it drops to
+    the threshold, count one "factor" and start again. The leftover stretch at the
+    end counts as a partial factor. MTLD is the number of words per factor.
+    """
     factors = 0.0
     types: set[str] = set()
     count = 0
@@ -225,6 +238,7 @@ def spelling_counts(text: str) -> tuple[int, int]:
 
 
 def discourse_marker_counts(text: str) -> dict[str, int]:
+    """Count each stock connective or phrase that appears, as whole words only."""
     lower = normalise(text).lower()
     found = {}
     for marker in DISCOURSE_MARKERS:
@@ -235,6 +249,7 @@ def discourse_marker_counts(text: str) -> dict[str, int]:
 
 
 def function_word_profile(tokens: list[str]) -> dict[str, float]:
+    """Relative frequency of each function word (its share of all words)."""
     lower = [t.lower() for t in tokens]
     n = len(lower) or 1
     return {w: lower.count(w) / n for w in FUNCTION_WORDS}
@@ -252,6 +267,7 @@ def function_word_distance(profile_a: dict[str, float], profile_b: dict[str, flo
 
 
 def is_contraction(token: str) -> bool:
+    """True for forms such as don't, I'm and it's, but not possessives like John's."""
     t = token.lower()
     return bool(CONTRACTION_RE.search(t)) or t in S_CONTRACTIONS
 
@@ -266,19 +282,24 @@ def extract_features(text: str) -> dict:
     tokens = tokenize(text)
     n = len(tokens)
 
+    # Most features are rates per 100 words, so texts of different lengths compare fairly.
     def per100(count: float) -> float:
         return 100.0 * count / n if n else 0.0
 
+    # Sentence lengths (in words) and word lengths (in letters, ignoring apostrophes).
     sent_lens = [len(tokenize(s)) for s in split_sentences(text)]
     sent_lens = [s for s in sent_lens if s > 0]
     letters = [len(t.replace("'", "")) for t in tokens]
 
-    dashes = (text.count("—") + text.count("–")
+    # Dashes used as punctuation: em dashes, en dashes, and hyphens with a space on each
+    # side (" - " or " -- "). Hyphens inside words such as "follow-up" are not counted.
+    dashes = (text.count("\u2014") + text.count("\u2013")
               + len(re.findall(r"(?<=\s)-{1,2}(?=\s)", text)))
     markers = discourse_marker_counts(text)
     british, american = spelling_counts(text)
+    # "I'm" and "we've" count as first person, so look at the part before the apostrophe.
     first_person = sum(t.lower().split("'")[0] in FIRST_PERSON for t in tokens)
-    readable = n >= 10
+    readable = n >= 10  # readability formulas are meaningless on a handful of words
 
     return {
         "word_count": n,
@@ -300,6 +321,7 @@ def extract_features(text: str) -> dict:
         "discourse_markers_found": markers,
         "british_count": british,
         "american_count": american,
+        # None when the text has no spelling variants at all, so the feature is skipped.
         "british_share": british / (british + american) if british + american else None,
         "contractions_p100": per100(sum(is_contraction(t) for t in tokens)),
         "first_person_p100": per100(first_person),

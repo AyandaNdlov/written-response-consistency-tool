@@ -15,6 +15,8 @@ from .features import split_sentences
 
 LLM_MODEL = "claude-sonnet-5-5"
 
+# The system prompt keeps generated questions about the content, never about authorship.
+
 LLM_SYSTEM_PROMPT = (
     "You help Industrial Psychologists and assessment practitioners prepare a structured "
     "follow-up interview after a graduate assessment. You will receive paragraphs from a "
@@ -27,12 +29,14 @@ LLM_SYSTEM_PROMPT = (
     "with no numbering, headings or other text."
 )
 
+# Used in turn for each flagged paragraph. {n} is the paragraph number, {quote} its opening.
 PARAGRAPH_TEMPLATES = [
     'In paragraph {n} you wrote: "{quote}" Can you walk me through how you reached that conclusion?',
     'Paragraph {n} makes the point that "{quote}" Can you give a concrete example, from your own experience, that shows this in practice?',
     'In paragraph {n} you said: "{quote}" What alternatives did you consider, and why did you settle on this approach?',
 ]
 
+# General questions added after the paragraph questions, suitable for any response.
 GENERAL_PROBES = [
     "What sources or experiences informed this response?",
     "Which part of the response did you find hardest to write, and why?",
@@ -51,6 +55,7 @@ def key_quote(paragraph: str, max_words: int = 22) -> str:
 
 
 def template_questions(flagged: list[dict], n_general: int = 2) -> list[str]:
+    """One templated question per flagged paragraph, then a few general probes."""
     questions = [
         PARAGRAPH_TEMPLATES[i % len(PARAGRAPH_TEMPLATES)].format(n=p["index"], quote=key_quote(p["text"]))
         for i, p in enumerate(flagged)
@@ -72,6 +77,7 @@ def get_api_key(secrets=None) -> str | None:
 
 
 def _parse_questions(text: str) -> list[str]:
+    """Pull the questions out of the model reply, stripping any bullets or numbers."""
     lines = []
     for line in text.splitlines():
         line = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line).strip()
@@ -99,8 +105,10 @@ def llm_questions(paragraphs: list[dict], api_key: str) -> list[str]:
             **request, betas=["server-side-fallback-2026-07-01"],
             extra_body={"fallbacks": "default", "output_config": {"effort": "low"}})
     except anthropic.BadRequestError:
+        # Fallback beta not available on this account, so make a plain request instead.
         response = client.messages.create(**request)
 
+    # Any failure raises, so generate_questions can fall back to the templates.
     if response.stop_reason == "refusal":
         raise RuntimeError("The model declined the request.")
     text = "".join(b.text for b in response.content if b.type == "text")
