@@ -18,8 +18,6 @@ interview questions**. The practitioner makes the final judgement.
 > spell-checkers, and accessibility accommodations. Use this information only to guide a
 > structured follow-up conversation. The final judgement rests with the practitioner.*
 
-UCT *AI in IO*, Assignment 2.
-
 ---
 
 ## The problem

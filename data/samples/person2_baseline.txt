@@ -1,0 +1,7 @@
+The time I had to learn something fast was in my vac work at a logistics company in Durban. On my second day my supervisor told me I'd be helping with the monthly stock report because the guy who normally did it was on leave. I had never used Power BI before. I'd only done basic Excel at varsity, so I was honestly quite scared.
+
+What I did first was ask a lot of questions. I asked the admin lady which reports people actually read, because I didn't want to waste time making things nobody looks at. Then I watched YouTube videos at night, mostly short ones, and I practised on the old reports that were saved on the shared drive. I made a lot of mistakes. One time the totals were double what they should be and I only realised because the warehouse manager laughed and said "we're not that busy".
+
+I think the main thing I learnt is that you don't have to know everything before you start. You have to know who to ask and you have to check your work. I made a small checklist for myself - do the totals match last month, are the dates right, did I filter out the returns. That checklist saved me a few times.
+
+By the end of the month the report went out on time. It wasn't perfect, but my supervisor said it was clear and she kept me on that task for the rest of my contract. I'm still not an expert in Power BI but I'm not scared of it anymore, which for me is a big deal.
