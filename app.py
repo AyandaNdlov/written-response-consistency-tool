@@ -18,7 +18,7 @@ import streamlit as st
 from src.compare import (BAND_COLOURS, BAND_ICONS, GREY, compare_texts, format_value,
                          load_reference_ranges)
 from src.paragraphs import analyse_paragraphs, flagged_paragraphs
-from src.questions import LLM_MODEL, generate_questions, get_api_key
+from src.questions import generate_questions
 from src.report import DISCLAIMER, PROVISIONAL_NOTE, build_report
 
 SAMPLES_DIR = Path(__file__).parent / "data" / "samples"
@@ -169,6 +169,49 @@ div[data-testid="stTextArea"] textarea { font-size: 0.98rem; line-height: 1.55; 
 .paper li.lock::before { content: "🔒"; font-size: 0.85rem; }
 .paper .sign { font-family: var(--hand); font-size: 1.05rem; text-align: right; opacity: 0.75; margin-top: 0.2rem; }
 
+/* cartoon footer: the whole process in five interactive steps */
+.journey { position: relative; background: var(--ink); color: var(--cream); border-radius: 36px 36px 0 0;
+  margin: 4.5rem -1rem 0; padding: 2.2rem 1.5rem 1.4rem; overflow: hidden; }
+.journey h3 { font-family: var(--hand) !important; font-weight: 400 !important; font-size: 2rem !important;
+  color: var(--cream) !important; text-align: center; margin: 0 0 0.2rem !important; padding: 0 !important; }
+.journey .hint { text-align: center; font-size: 0.9rem; opacity: 0.7; margin-bottom: 1.4rem; }
+.steps { position: relative; display: flex; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;
+  max-width: 1000px; margin: 0 auto; padding-top: 4.2rem; }
+.steps::before { content: ""; position: absolute; left: 6%; right: 6%; top: 7.6rem;
+  border-top: 3px dashed rgba(247,244,238,0.35); }
+.station { position: relative; flex: 1 1 150px; display: flex; flex-direction: column; align-items: center;
+  cursor: pointer; outline: none; }
+.station svg { width: 120px; height: 110px; overflow: visible; animation: bob 3s ease-in-out infinite;
+  animation-delay: var(--d); transition: transform .25s ease; }
+.station:hover svg, .station:focus svg { animation: wiggle .6s ease-in-out infinite; transform: scale(1.12); }
+.station .label { font-family: var(--hand); font-size: 1.3rem; margin-top: 0.4rem; text-align: center; }
+.station .label b { display: inline-flex; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  align-items: center; justify-content: center; background: var(--pink); color: #fff; font-family: 'DM Sans';
+  font-size: 0.85rem; margin-right: 0.3rem; }
+.station .bubble { position: absolute; bottom: calc(100% - 1.4rem); left: 50%; width: 190px;
+  transform: translate(-50%, 10px) scale(.9); background: var(--cream); color: var(--ink); border-radius: 16px;
+  padding: 0.6rem 0.8rem; font-size: 0.85rem; line-height: 1.35; text-align: center; opacity: 0;
+  pointer-events: none; transition: all .25s cubic-bezier(.3,1.6,.6,1); box-shadow: 4px 4px 0 var(--pink); z-index: 2; }
+.station .bubble::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px;
+  background: var(--cream); transform: translateX(-50%) rotate(45deg); }
+.station:hover .bubble, .station:focus .bubble { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.station:hover .light, .station:focus .light { animation: blink .9s steps(1) infinite; }
+.station:hover .pupil, .station:focus .pupil { animation: look 1.2s ease-in-out infinite; }
+.light:nth-of-type(2) { animation-delay: .3s !important; } .light:nth-of-type(3) { animation-delay: .6s !important; }
+.walker { position: relative; height: 46px; margin-top: 1.2rem; }
+.walker svg { position: absolute; bottom: 0; width: 44px; animation: walk 22s linear infinite; }
+.walker svg .legs { animation: step .4s steps(2) infinite; transform-origin: center; }
+.journey .tiny { text-align: center; font-size: 0.8rem; opacity: 0.55; margin-top: 0.6rem; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes wiggle { 0%,100% { transform: scale(1.12) rotate(0); } 25% { transform: scale(1.12) rotate(-6deg); }
+  75% { transform: scale(1.12) rotate(6deg); } }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes look { 0%,100% { transform: translateX(0); } 30% { transform: translateX(-3px); } 70% { transform: translateX(3px); } }
+@keyframes walk { from { left: -50px; } to { left: 100%; } }
+@keyframes step { 0% { transform: scaleX(1); } 100% { transform: scaleX(-1); } }
+@media (max-width: 700px) { .steps::before { display: none; } .station { flex-basis: 45%; } }
+@media (prefers-reduced-motion: reduce) { .journey * { animation: none !important; } }
+
 </style>
 """
 
@@ -206,6 +249,64 @@ DOODLE = f"""<svg class="doodle" viewBox="0 0 900 250" fill="none" stroke="{INK}
 <text x="620" y="236" font-family="Gochi Hand, cursive" font-size="26" fill="{INK}" stroke="none">remote</text>
 <text x="395" y="190" font-family="Gochi Hand, cursive" font-size="26" fill="{PINK}" stroke="none">same voice?</text>
 </svg>"""
+
+# Cartoon footer: one small drawing per step of the process, with a hover/tap bubble.
+_S = f'fill="none" stroke="{CREAM}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"'
+JOURNEY_STEPS = [
+    ("paste", "Paste two texts: a supervised baseline and the remote response from the same candidate.",
+     f'<g {_S}><g transform="rotate(-10 40 55)"><rect x="14" y="20" width="44" height="58" rx="7" fill="#fff"/>'
+     f'<circle cx="29" cy="42" r="3" fill="{INK}" stroke="none"/><circle cx="43" cy="42" r="3" fill="{INK}" stroke="none"/>'
+     f'<path d="M29 54q7 6 14 0" stroke="{INK}"/></g>'
+     f'<g transform="rotate(10 82 55)"><rect x="60" y="22" width="44" height="58" rx="7" fill="{PINK_SOFT}"/>'
+     f'<circle cx="75" cy="44" r="3" fill="{INK}" stroke="none"/><circle cx="89" cy="44" r="3" fill="{INK}" stroke="none"/>'
+     f'<path d="M75 56q7 6 14 0" stroke="{INK}"/></g></g>'),
+    ("measure", "Measure 17 writing habits: sentence length, vocabulary, punctuation, spelling and more.",
+     f'<g {_S}><path d="M70 66l28 28" stroke-width="10"/><circle cx="52" cy="48" r="28" fill="{PERIWINKLE}" stroke-width="5"/>'
+     f'<circle cx="42" cy="46" r="8" fill="#fff" stroke="{INK}" stroke-width="2"/><circle cx="62" cy="46" r="8" fill="#fff" stroke="{INK}" stroke-width="2"/>'
+     f'<circle class="pupil" cx="43" cy="47" r="3.5" fill="{INK}" stroke="none"/><circle class="pupil" cx="63" cy="47" r="3.5" fill="{INK}" stroke="none"/>'
+     f'<path d="M45 62q7 4 14 0" stroke="{INK}" stroke-width="2.5"/></g>'),
+    ("compare", "Compare fairly: each difference is checked against how much one person's writing normally varies.",
+     f'<g {_S}><rect x="38" y="8" width="44" height="96" rx="20" fill="#2B4A3D"/>'
+     f'<circle class="light" cx="60" cy="31" r="11" fill="#9BD08C" stroke="none"/>'
+     f'<circle class="light" cx="60" cy="56" r="11" fill="{LIME}" stroke="none"/>'
+     f'<circle class="light" cx="60" cy="81" r="11" fill="#FF8FB8" stroke="none"/>'
+     f'<path d="M22 30l10 4M20 56h12M22 82l10-4M98 30l-10 4M100 56H88M98 82l-10-4"/></g>'),
+    ("ask", "Ask, don't accuse: neutral follow-up questions about the paragraphs that differ most.",
+     f'<g {_S}><path d="M10 20h62a10 10 0 0 1 10 10v28a10 10 0 0 1-10 10H38l-16 14v-14H10A10 10 0 0 1 0 58V30a10 10 0 0 1 10-10z" fill="{CREAM}"/>'
+     f'<text x="41" y="58" text-anchor="middle" font-family="Gochi Hand, cursive" font-size="38" fill="{PINK}" stroke="none">?</text>'
+     f'<path d="M64 50h44a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8h-6v12l-14-12H64a8 8 0 0 1-8-8V58a8 8 0 0 1 8-8z" fill="{PERIWINKLE}"/>'
+     f'<circle cx="74" cy="68" r="3" fill="{INK}" stroke="none"/><circle cx="86" cy="68" r="3" fill="{INK}" stroke="none"/>'
+     f'<circle cx="98" cy="68" r="3" fill="{INK}" stroke="none"/></g>'),
+    ("you decide", "You make the call: add notes, download the report and decide with the full picture.",
+     f'<g {_S}><rect x="26" y="10" width="56" height="74" rx="8" fill="{LIME}"/>'
+     f'<path d="M38 28h32M38 40h32M38 52h20" stroke="{INK}" stroke-width="3"/>'
+     f'<circle cx="80" cy="78" r="20" fill="{PINK}"/><path d="M71 78l6 6 12-13" stroke-width="4.5"/>'
+     f'<path d="M16 16l4 4M16 20l4-4M100 22l5 5M100 27l5-5M14 92l4 4M14 96l4-4"/></g>'),
+]
+
+# A little pink character that strolls along the bottom of the footer.
+WALKER = (f'<svg viewBox="0 0 44 46" aria-hidden="true"><g class="legs" stroke="{CREAM}" stroke-width="3" '
+          f'stroke-linecap="round"><path d="M16 36l-4 9M28 36l4 9"/></g>'
+          f'<ellipse cx="22" cy="22" rx="18" ry="16" fill="#FF8FB8"/>'
+          f'<circle cx="16" cy="19" r="3" fill="{INK}"/><circle cx="28" cy="19" r="3" fill="{INK}"/>'
+          f'<path d="M17 27q5 4 10 0" fill="none" stroke="{INK}" stroke-width="2" stroke-linecap="round"/></svg>')
+
+
+def render_footer() -> None:
+    """Draw the cartoon footer that walks through the whole process."""
+    stations = "".join(
+        f'<div class="station" tabindex="0" style="--d:{i * 0.35:.2f}s"><div class="bubble">{tip}</div>'
+        f'<svg viewBox="0 0 120 110" aria-hidden="true">{art}</svg>'
+        f'<div class="label"><b>{i + 1}</b>{name}</div></div>'
+        for i, (name, tip, art) in enumerate(JOURNEY_STEPS))
+    st.markdown(
+        '<div class="journey"><h3>how it works, in five tiny steps</h3>'
+        '<div class="hint">hover over or tap a step</div>'
+        f'<div class="steps">{stations}</div>'
+        f'<div class="walker">{WALKER}</div>'
+        '<div class="tiny">Consistency Check · not an AI detector · supports professional judgement</div></div>',
+        unsafe_allow_html=True)
+
 
 # Inject the custom styles once, before anything else is drawn.
 st.markdown(CSS, unsafe_allow_html=True)
@@ -280,7 +381,6 @@ def kicker(text: str, num: int | None = None) -> None:
 
 # ---------------------------------------------------------------- sidebar
 
-api_key = get_api_key(st.secrets)
 ranges = load_reference_ranges()
 
 with st.sidebar:
@@ -304,15 +404,6 @@ with st.sidebar:
         "<li class='lock'><span>Remove names and ID numbers before pasting.</span></li>"
         "</ul></div>",
         unsafe_allow_html=True)
-    # The Claude option only appears when an API key is set; otherwise template questions are used.
-    use_llm = False
-    if api_key:
-        st.subheader("Question generation")
-        use_llm = st.toggle("Use Claude to tailor questions", value=False,
-                            help=f"Uses {LLM_MODEL}.")
-        if use_llm:
-            st.caption("When on, the flagged paragraphs are sent to Anthropic's API to write questions. "
-                       "Make sure your organisation's data-processing agreement allows this.")
     if ranges.get("_meta", {}).get("status") != "calibrated":
         st.caption("⚠️ Reference ranges are **provisional** until calibrated (see README).")
 
@@ -371,8 +462,7 @@ if st.button("Compare texts  →", type="primary"):
             paragraphs, questions, mode = [], [], "Template"
             if result["length_status"] != "refuse":
                 paragraphs = analyse_paragraphs(remote, result["baseline_features"], ranges)
-                questions, mode = generate_questions(flagged_paragraphs(paragraphs), paragraphs,
-                                                     use_llm=use_llm, api_key=api_key)
+                questions, mode = generate_questions(flagged_paragraphs(paragraphs), paragraphs)
         st.session_state["analysis"] = dict(result=result, paragraphs=paragraphs,
                                             questions=questions, mode=mode)
 
@@ -388,6 +478,7 @@ if analysis:
 
     if result["length_status"] == "refuse":
         st.error(result["length_message"])
+        render_footer()
         st.stop()
     if result["length_status"] == "warn":
         st.warning(result["length_message"])
@@ -477,3 +568,5 @@ if analysis:
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             type="primary",
         )
+
+render_footer()
