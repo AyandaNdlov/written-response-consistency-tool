@@ -478,5 +478,5 @@ if analysis:
             type="primary",
         )
 
-st.markdown("<div class='footer'><span class='hand'>made with care</span> · UCT <i>AI in IO</i> · "
+st.markdown("<div class='footer'><span class='hand'>made with care</span> · "
             "text is processed in memory only</div>", unsafe_allow_html=True)
