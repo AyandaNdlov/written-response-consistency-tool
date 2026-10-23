@@ -362,7 +362,7 @@ def radar_chart(base: dict, remote: dict) -> go.Figure:
                                  angularaxis=dict(gridcolor="rgba(30,58,47,0.15)",
                                                   tickfont=dict(size=13))),
                       paper_bgcolor="rgba(0,0,0,0)", font=dict(family="DM Sans, sans-serif", color=INK),
-                      margin=dict(l=50, r=50, t=30, b=30), height=460,
+                      margin=dict(l=110, r=110, t=40, b=30), height=480,
                       legend=dict(orientation="h", y=-0.08, x=0.5, xanchor="center", font=dict(size=14)))
     return fig
 
@@ -487,42 +487,46 @@ if analysis:
 
     base, remote = result["baseline_features"], result["remote_features"]
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Features outside typical range", f"{result['n_outside']} of {result['n_assessed']}")
+    m1.metric("Outside typical range", f"{result['n_outside']} of {result['n_assessed']}")
     m2.metric("🟠 Somewhat unusual", result["n_amber"])
     m3.metric("🔴 Notably different", result["n_red"])
     m4.metric("Words (baseline / remote)", f"{base['word_count']} / {remote['word_count']}")
     st.markdown(f"**Summary:** {result['summary']} This describes differences in writing "
                 "patterns only. It is not a judgement about who wrote the text.")
 
-    # --- feature table + radar side by side
-    tab_col, radar_col = st.columns([1.25, 1], gap="large")
-    with tab_col:
-        st.subheader("Feature comparison")
-        table = pd.DataFrame([{
-            "Feature": r["label"],
-            "Unit": r["unit"],
-            "Baseline": format_value(r["baseline"], r["decimals"]),
-            "Remote": format_value(r["remote"], r["decimals"]),
-            "Difference": format_value(r["difference"], r["decimals"]),
-            "Typical / high": f"{format_value(r['typical'], r['decimals'])} / {format_value(r['high'], r['decimals'])}",
-            "Band": f"{BAND_ICONS[r['band']]} {r['band']}",
-        } for r in result["rows"]])
-        st.dataframe(table.style.map(band_style, subset=["Band"]), hide_index=True,
-                     width="stretch", height=640)
+    # --- feature table, full width so the Band column is always visible
+    st.subheader("Feature comparison")
+    table = pd.DataFrame([{
+        "Feature": r["label"],
+        "Unit": r["unit"],
+        "Baseline": format_value(r["baseline"], r["decimals"]),
+        "Remote": format_value(r["remote"], r["decimals"]),
+        "Difference": format_value(r["difference"], r["decimals"]),
+        "Typical / high": f"{format_value(r['typical'], r['decimals'])} / {format_value(r['high'], r['decimals'])}",
+        "Band": f"{BAND_ICONS[r['band']]} {r['band']}",
+    } for r in result["rows"]])
+    st.dataframe(table.style.map(band_style, subset=["Band"]), hide_index=True,
+                 width="stretch", height=640)
+
+    # --- radar chart beside the feature explanations
+    radar_col, info_col = st.columns([1.1, 1], gap="large")
     with radar_col:
         st.subheader("Writing profile")
         st.plotly_chart(radar_chart(base, remote), width="stretch")
-        st.caption("Each axis is scaled to a fixed typical range (0 = low, 1 = high) so both texts "
-                   "share one scale. Overlapping shapes indicate similar profiles.")
-    with st.expander("What do these features mean?"):
-        for r in result["rows"]:
-            st.markdown(f"- **{r['label']}**: {r['explanation']}")
-        st.markdown(f"- **Spelling evidence**: baseline has {base['british_count']} British / "
-                    f"{base['american_count']} American variants; remote has {remote['british_count']} / "
-                    f"{remote['american_count']}. Compared only when each text has at least 2.")
-        if remote["discourse_markers_found"] or base["discourse_markers_found"]:
-            st.markdown(f"- **Connectives found**: baseline {base['discourse_markers_found'] or 'none'}; "
-                        f"remote {remote['discourse_markers_found'] or 'none'}")
+    with info_col:
+        st.subheader("How to read it")
+        st.markdown("Each axis is scaled to a fixed typical range (0 = low, 1 = high) so both texts "
+                    "share one scale. **The more the green and pink shapes overlap, the more similar "
+                    "the two writing profiles are.**")
+        with st.expander("What do these features mean?"):
+            for r in result["rows"]:
+                st.markdown(f"- **{r['label']}**: {r['explanation']}")
+            st.markdown(f"- **Spelling evidence**: baseline has {base['british_count']} British / "
+                        f"{base['american_count']} American variants; remote has {remote['british_count']} / "
+                        f"{remote['american_count']}. Compared only when each text has at least 2.")
+            if remote["discourse_markers_found"] or base["discourse_markers_found"]:
+                st.markdown(f"- **Connectives found**: baseline {base['discourse_markers_found'] or 'none'}; "
+                            f"remote {remote['discourse_markers_found'] or 'none'}")
 
     # --- paragraphs
     kicker("zooming in", 3)
