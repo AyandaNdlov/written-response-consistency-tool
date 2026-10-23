@@ -1,8 +1,8 @@
-"""Written Response Consistency Tool: Streamlit UI.
+""" 
 
 Compares a supervised baseline writing sample with a remote (unproctored)
 written assessment from the same candidate. All text is processed in memory
-only; nothing is written to disk (POPIA).
+only; nothing is written to disk Due to (POPIA).
 """
 
 from __future__ import annotations
