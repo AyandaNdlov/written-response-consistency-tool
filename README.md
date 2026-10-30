@@ -10,14 +10,6 @@ It produces a **consistency report** showing where writing patterns are similar 
 highlights the paragraphs that differ most from the baseline, and suggests **follow-up
 interview questions**. The practitioner makes the final judgement.
 
-> **This is not an AI detector.** It never states or implies that a candidate did or did not
-> use AI, and it produces no "AI score" or probability.
->
-> *This report does not indicate whether AI was used. Differences in writing can have many
-> legitimate causes, including time pressure, topic, language background, editing tools such as
-> spell-checkers, and accessibility accommodations. Use this information only to guide a
-> structured follow-up conversation. The final judgement rests with the practitioner.*
-
 ---
 
 ## The problem
